@@ -52,10 +52,13 @@ export interface Post {
     featured_image?: string;
     status: PostStatus;
     author_id: number;
-    author?: User; // Joined Author Data
+    author?: User;
     views: number;
     created_at: string;
     updated_at: string;
+    category_id?: number;
+    category?: Category;
+    tags?: Tag[];
 }
 
 /**
@@ -105,4 +108,18 @@ export interface ApiResponse<T> {
         total: number;
         totalPages: number;
     };
+}
+
+
+export interface Category {
+    category_id: number;
+    name: string;
+    slug: string;
+    description?: string;
+}
+
+export interface Tag {
+    tag_id: number;
+    name: string;
+    slug: string;
 }

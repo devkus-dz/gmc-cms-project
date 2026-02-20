@@ -1,0 +1,18 @@
+/* frontend/app/globals.css */
+@import "tailwindcss";
+
+/* Tailwind v4 handles all the base resets, components, and utilities 
+  automatically through the import above. 
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+}
+
+body {
+  background-color: theme('colors.slate.50');
+  color: theme('colors.slate.900');
+}
