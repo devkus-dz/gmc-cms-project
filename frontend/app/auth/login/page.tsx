@@ -2,7 +2,7 @@
 
 /**
  * @file frontend/app/auth/login/page.tsx
- * @description User login page with form validation and cookie-based auth state.
+ * @description User login page. Relies on the backend to set the HttpOnly cookie.
  */
 
 import { useState } from 'react';
@@ -12,54 +12,34 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
-
-// Adjust this import path if your services folder is located elsewhere
 import { authService } from '../../../services/authService';
 
-// 1. Define the validation schema
 const loginSchema = z.object({
     email: z.string().email({ message: "Please enter a valid email address." }),
     password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
-// Infer the TypeScript type from the schema
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
     const router = useRouter();
     const [apiError, setApiError] = useState<string | null>(null);
 
-    // 2. Initialize React Hook Form
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
     });
 
-    /**
-     * Handles the form submission.
-     * @param {LoginFormValues} data - The validated form data.
-     */
     const onSubmit = async (data: LoginFormValues) => {
-        setApiError(null); // Clear previous errors
+        setApiError(null);
         try {
-            const response = await authService.login(data);
-            console.log('Login successful:', response);
+            // 1. Send credentials. The backend will attach the HttpOnly cookie to the response header.
+            await authService.login(data);
 
-            // 👉 Save the token to a cookie so Middleware can protect /admin routes
-            // Adjust this based on your Express backend's exact response structure (e.g., response.data.token)
-            const token = (response as any).token || (response as any).data?.token;
-
-            if (token) {
-                // Set an HTTP-friendly cookie valid for 1 day
-                document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Strict`;
-            }
-
-            // Redirect to the admin dashboard
+            // 2. The browser automatically saves the cookie. We just redirect!
             router.push('/admin');
         } catch (error: any) {
             console.error('Login failed:', error);
-            // Extract error message from your Express backend response
-            const errorMessage = error.response?.data?.message || 'Invalid email or password. Please try again.';
-            setApiError(errorMessage);
+            setApiError(error.response?.data?.message || 'Invalid email or password.');
         }
     };
 
@@ -70,7 +50,6 @@ export default function LoginPage() {
                 <p className="text-slate-500 text-sm mt-2">Sign in to manage your educational content.</p>
             </div>
 
-            {/* Show API Error Message if login fails */}
             {apiError && (
                 <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -79,7 +58,6 @@ export default function LoginPage() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                {/* Email Field */}
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
                     <div className="relative">
@@ -96,7 +74,6 @@ export default function LoginPage() {
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
                 </div>
 
-                {/* Password Field */}
                 <div>
                     <div className="flex justify-between items-center mb-1">
                         <label className="block text-sm font-medium text-slate-700">Password</label>
@@ -118,7 +95,6 @@ export default function LoginPage() {
                     {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
                 </div>
 
-                {/* Submit Button */}
                 <button
                     type="submit"
                     disabled={isSubmitting}

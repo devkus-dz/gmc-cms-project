@@ -3,6 +3,7 @@
 /**
  * @file frontend/components/admin/Sidebar.tsx
  * @description Persistent left navigation for the Admin Panel.
+ * Uses a clean API call to let the backend clear the HttpOnly session.
  */
 
 import Link from 'next/link';
@@ -16,21 +17,23 @@ import { authService } from '../../services/authService';
 export default function Sidebar() {
     const pathname = usePathname();
 
-    // Helper function to check if a link is active
     const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
 
     /**
-     * Handles the logout process by destroying backend sessions AND client-side cookies.
+     * Calls the backend API to clear the HttpOnly cookie, then redirects.
      */
     const handleLogout = async () => {
         try {
-            // 1. Tell the backend to clear its HttpOnly cookie (if it has one)
+            // 1. Tell the backend to destroy the HttpOnly cookie
             await authService.logout();
         } catch (error) {
-            console.error('Backend logout failed, proceeding with client cleanup:', error);
+            console.error('Logout error:', error);
         } finally {
+            // 2. Clear basic client storage just to reset application state
             localStorage.clear();
             sessionStorage.clear();
+
+            // 3. Force a hard reload to the login page
             window.location.href = '/auth/login';
         }
     };
@@ -41,8 +44,8 @@ export default function Sidebar() {
             <Link
                 href={href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
             >
                 <Icon className="h-5 w-5" />
@@ -53,7 +56,6 @@ export default function Sidebar() {
 
     return (
         <aside className="w-64 bg-slate-950 text-slate-300 shrink-0 flex-col hidden md:flex border-r border-slate-800">
-            {/* Brand */}
             <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900">
                 <Link href="/" className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
                     <BookOpen className="h-6 w-6 text-blue-500" />
@@ -61,7 +63,6 @@ export default function Sidebar() {
                 </Link>
             </div>
 
-            {/* Navigation Links */}
             <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
                 <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Core</p>
                 <NavItem href="/admin" icon={LayoutDashboard} label="Dashboard" />
@@ -78,7 +79,6 @@ export default function Sidebar() {
                 <NavItem href="/admin/settings" icon={Settings} label="Settings" />
             </nav>
 
-            {/* Bottom Actions */}
             <div className="p-4 border-t border-slate-800 bg-slate-900">
                 <button
                     onClick={handleLogout}

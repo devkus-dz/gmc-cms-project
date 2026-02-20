@@ -1,16 +1,16 @@
 /**
- * @file frontend/middleware.ts
- * @description Next.js Edge Middleware to protect admin routes.
- * Must be placed at the root of the project, NOT inside the /app directory.
+ * @file frontend/proxy.ts
+ * @description Next.js 16+ Proxy to protect admin routes.
+ * Acts as a network boundary before requests reach the application.
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * The main middleware function that Next.js runs on matched routes.
+ * The main proxy function that Next.js runs on matched routes.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     // 1. Check if the user has an authentication token in their cookies
     const token = request.cookies.get('token')?.value;
 
@@ -29,10 +29,10 @@ export function middleware(request: NextRequest) {
 }
 
 // Fallback for Turbopack strict export requirements
-export default middleware;
+export default proxy;
 
 /**
- * Configuration object to tell Next.js exactly which routes this middleware should run on.
+ * Configuration object to tell Next.js exactly which routes this proxy should run on.
  */
 export const config = {
     matcher: [
