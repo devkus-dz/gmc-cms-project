@@ -23,10 +23,15 @@ const app = express();
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false })); // Allow images to be viewed
-app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
+app.use(cors({
+    origin: 'http://localhost:3000', // Specifically allow your Next.js frontend
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Serve static files from uploads folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
