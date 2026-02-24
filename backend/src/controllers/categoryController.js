@@ -38,50 +38,43 @@ export const createCategory = async (req, res) => {
 };
 
 /**
- * @desc    Update an existing category
- * @route   PUT /api/v1/categories/:id
- * @access  Protected (Admin/Editor)
- * @returns {Object} JSON response with the updated category
+ * @function updateCategory
+ * @description Updates an existing category by its ID.
+ * @route PUT /api/v1/categories/:id
  */
 export const updateCategory = async (req, res) => {
     try {
-        const { name, description, parent_id, is_active } = req.body;
+        const { id } = req.params;
+        const updatedCategory = await Category.update(id, req.body);
 
-        // Only regenerate slug if name is updated
-        const slug = name ? generateSlug(name) : undefined;
-
-        const category = await Category.update(req.params.id, {
-            name,
-            slug,
-            description,
-            parent_id,
-            is_active
-        });
-
-        if (!category) {
+        if (!updatedCategory) {
             return res.status(404).json(errorResponse('Category not found'));
         }
 
-        res.json(successResponse(category, 'Category updated successfully'));
+        res.json(successResponse(updatedCategory, 'Category updated successfully'));
     } catch (error) {
+        if (error.code === '23505') {
+            return res.status(400).json(errorResponse('A category with this name or slug already exists.'));
+        }
         res.status(400).json(errorResponse(error.message));
     }
 };
 
 /**
- * @desc    Delete a category
- * @route   DELETE /api/v1/categories/:id
- * @access  Protected (Admin/Editor)
- * @returns {Object} JSON response with success message
+ * @function deleteCategory
+ * @description Deletes a category from the database.
+ * @route DELETE /api/v1/categories/:id
  */
 export const deleteCategory = async (req, res) => {
     try {
-        const category = await Category.delete(req.params.id);
+        const { id } = req.params;
 
+        const category = await Category.findById(id);
         if (!category) {
             return res.status(404).json(errorResponse('Category not found'));
         }
 
+        await Category.delete(id);
         res.json(successResponse(null, 'Category deleted successfully'));
     } catch (error) {
         res.status(500).json(errorResponse(error.message));

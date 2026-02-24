@@ -38,19 +38,47 @@ export const createTag = async (req, res) => {
 };
 
 /**
- * @desc    Delete a tag
- * @route   DELETE /api/v1/tags/:id
- * @access  Protected (Admin/Editor)
- * @returns {Object} Success message
+ * @function updateTag
+ * @description Updates an existing tag by its ID.
+ * @route PUT /api/v1/tags/:id
+ */
+export const updateTag = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, slug, description } = req.body;
+
+        const updatedTag = await Tag.update(id, { name, slug, description });
+
+        if (!updatedTag) {
+            return res.status(404).json(errorResponse('Tag not found'));
+        }
+
+        res.json(successResponse(updatedTag, 'Tag updated successfully'));
+    } catch (error) {
+        // Handle unique constraint errors (e.g., user tries to use a slug that already exists)
+        if (error.code === '23505') {
+            return res.status(400).json(errorResponse('A tag with this name or slug already exists.'));
+        }
+        res.status(500).json(errorResponse(error.message));
+    }
+};
+
+/**
+ * @function deleteTag
+ * @description Deletes a tag from the database.
+ * @route DELETE /api/v1/tags/:id
  */
 export const deleteTag = async (req, res) => {
     try {
-        const tag = await Tag.delete(req.params.id);
+        const { id } = req.params;
 
+        // Ensure the tag exists before deleting
+        const tag = await Tag.findById(id);
         if (!tag) {
             return res.status(404).json(errorResponse('Tag not found'));
         }
 
+        await Tag.delete(id);
         res.json(successResponse(null, 'Tag deleted successfully'));
     } catch (error) {
         res.status(500).json(errorResponse(error.message));

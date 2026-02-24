@@ -40,3 +40,10 @@ export const commentValidation = [
     body('content').trim().notEmpty().withMessage('Comment cannot be empty'),
     body('post_id').isInt().withMessage('Post ID is required')
 ];
+
+export const commentStatusValidation = [
+    body('status')
+        .trim()
+        .notEmpty().withMessage('Status is required')
+        .isIn(['pending', 'approved', 'spam', 'trash']).withMessage('Invalid status value')
+];

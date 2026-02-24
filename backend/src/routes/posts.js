@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAllPosts, getPostBySlug, createPost, updatePost, deletePost } from '../controllers/postController.js';
+import { getAllPosts, getPostBySlug, createPost, updatePost, deletePost, incrementPostView, likePost } from '../controllers/postController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { postValidation, validate } from '../middleware/validation.js';
 
@@ -13,5 +13,7 @@ router.get('/:slug', getPostBySlug);
 router.post('/', protect, authorize('admin', 'editor'), postValidation, validate, createPost);
 router.put('/:id', protect, authorize('admin', 'editor', 'author'), postValidation, validate, updatePost);
 router.delete('/:id', protect, authorize('admin', 'editor'), deletePost);
+router.post('/:id/view', incrementPostView);
+router.post('/:id/like', likePost);
 
 export default router;

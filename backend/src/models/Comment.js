@@ -14,15 +14,21 @@ class Comment {
   }
 
   // Admin: Get ALL comments across the whole site
-  static async findAll(limit = 20, offset = 0) {
+  static async findAll(limit = 100, offset = 0) {
     const sql = `
-      SELECT c.*, u.username, u.avatar, p.title as post_title 
+      SELECT c.*, 
+             u.username as author_name, 
+             u.avatar, 
+             p.title as post_title,
+             p.slug as post_slug
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.user_id
       LEFT JOIN posts p ON c.post_id = p.post_id
       ORDER BY c.created_at DESC 
       LIMIT $1 OFFSET $2;
     `;
+    // 👆 Added 'as author_name' and 'p.slug as post_slug'
+
     const { rows } = await query(sql, [limit, offset]);
     return rows;
   }
@@ -30,12 +36,15 @@ class Comment {
   // Public: Get only approved comments for a specific post
   static async findByPost(post_id) {
     const sql = `
-      SELECT c.*, u.username, u.avatar 
-      FROM comments c
-      LEFT JOIN users u ON c.user_id = u.user_id
-      WHERE c.post_id = $1 
-      ORDER BY c.created_at ASC;
-    `; // I removed "AND c.status = 'approved'"
+    SELECT c.*, 
+           u.username as author_name, 
+           u.avatar as author_avatar 
+    FROM comments c
+    LEFT JOIN users u ON c.user_id = u.user_id
+    WHERE c.post_id = $1 AND c.status = 'approved' 
+    ORDER BY c.created_at ASC;
+  `;
+
     const { rows } = await query(sql, [post_id]);
     return rows;
   }

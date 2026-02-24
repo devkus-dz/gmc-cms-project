@@ -6,33 +6,20 @@ import {
     generateSlug,
     paginate
 } from '../utils/helpers.js';
+import ActivityLog from '../models/ActivityLog.js';
 
 /**
- * @desc    Get all posts with pagination and status filter.
- * Uses caching to improve performance for frequent requests.
- * @route   GET /api/v1/posts
- * @access  Public
- * @returns {Object} JSON response with list of posts
+ * @function getAllPosts
+ * @description Retrieves posts. Bypasses status filter if 'all' is requested by admin.
+ * @route GET /api/v1/posts
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>} JSON response with the list of posts.
  */
 export const getAllPosts = async (req, res) => {
     try {
-        const { page, limit, offset } = paginate(req.query.page, req.query.limit);
-        const status = req.query.status || 'published';
-
-        // Generate unique cache key based on query parameters
-        const cacheKey = `posts_${page}_${limit}_${status}`;
-
-        // Check Cache
-        const cachedData = cacheService.get(cacheKey);
-        if (cachedData) {
-            return res.json(successResponse(cachedData));
-        }
-
-        // Database Query
-        const posts = await Post.findAll({ status, limit, offset });
-
-        // Save to Cache
-        cacheService.set(cacheKey, posts);
+        const status = req.query.status || 'all';
+        const posts = await Post.findAll({ status });
 
         res.json(successResponse(posts));
     } catch (error) {
@@ -41,34 +28,31 @@ export const getAllPosts = async (req, res) => {
 };
 
 /**
- * @desc    Get a single post by its slug.
- * Checks cache first, then database. Increments view count on retrieval.
- * @route   GET /api/v1/posts/:slug
- * @access  Public
- * @returns {Object} JSON response with post details
+ * @function getPostBySlug
+ * @description Retrieves a single post by its slug.
+ * @route GET /api/v1/posts/:slug
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>} JSON response with post details.
  */
 export const getPostBySlug = async (req, res) => {
     try {
         const { slug } = req.params;
         const cacheKey = `post_${slug}`;
 
-        // Check Cache
         const cachedPost = cacheService.get(cacheKey);
         if (cachedPost) {
             return res.json(successResponse(cachedPost));
         }
 
-        // Database Query
         const post = await Post.findBySlug(slug);
 
         if (!post) {
             return res.status(404).json(errorResponse('Post not found'));
         }
 
-        // Increment view count (Side effect, does not block response)
         await Post.incrementViews(post.post_id);
 
-        // Save to Cache
         cacheService.set(cacheKey, post);
 
         res.json(successResponse(post));
@@ -78,82 +62,134 @@ export const getPostBySlug = async (req, res) => {
 };
 
 /**
- * @desc    Create a new post.
- * Clears the cache to ensure new content is visible immediately.
- * @route   POST /api/v1/posts
- * @access  Protected (Admin/Editor/Author)
- * @returns {Object} JSON response with the created post
+ * @function createPost
+ * @description Creates a new post and formats dates for PostgreSQL strict constraints.
+ * @route POST /api/v1/posts
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>} JSON response with the created post.
  */
 export const createPost = async (req, res) => {
     try {
-        const { title } = req.body;
+        const postData = { ...req.body, author_id: req.user.user_id };
+        const newPost = await Post.create(postData);
 
-        const postData = {
-            ...req.body,
-            author_id: req.user.user_id,
-            slug: generateSlug(title)
-        };
+        await ActivityLog.log({
+            user_id: req.user.user_id,
+            action: 'CREATE_POST',
+            entity_type: 'post',
+            entity_id: newPost.post_id,
+            description: `Created new post: "${newPost.title}"`,
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent']
+        });
 
-        const post = await Post.create(postData);
-
-        // Clear all cache to update lists
         cacheService.flush();
 
-        res.status(201).json(successResponse(post, 'Post created successfully'));
+        res.status(201).json(successResponse(newPost, 'Post created successfully'));
     } catch (error) {
-        res.status(400).json(errorResponse(error.message));
+        if (error.code === '23505') return res.status(400).json(errorResponse('A post with this slug already exists.'));
+        res.status(500).json(errorResponse(error.message));
     }
 };
 
 /**
- * @desc    Update an existing post.
- * Clears specific post cache and general list cache.
- * @route   PUT /api/v1/posts/:id
- * @access  Protected (Admin/Editor/Author)
- * @returns {Object} JSON response with the updated post
+ * @function updatePost
+ * @description Updates an existing post and safely formats SQL dates.
+ * @route PUT /api/v1/posts/:id
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>} JSON response with the updated post.
  */
 export const updatePost = async (req, res) => {
     try {
-        if (req.body.title) {
-            req.body.slug = generateSlug(req.body.title);
-        }
+        const { id } = req.params;
+        const updatedPost = await Post.update(id, req.body);
 
-        const post = await Post.update(req.params.id, req.body);
-
-        if (!post) {
+        if (!updatedPost) {
             return res.status(404).json(errorResponse('Post not found'));
         }
 
-        // Clear specific post cache and global lists
-        cacheService.del(`post_${post.slug}`);
+        await ActivityLog.log({
+            user_id: req.user.user_id,
+            action: 'UPDATE_POST',
+            entity_type: 'post',
+            entity_id: id,
+            description: `Updated post: "${updatedPost.title}"`,
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent']
+        });
+
         cacheService.flush();
 
-        res.json(successResponse(post, 'Post updated successfully'));
+        res.json(successResponse(updatedPost, 'Post updated successfully'));
     } catch (error) {
-        res.status(400).json(errorResponse(error.message));
+        if (error.code === '23505') return res.status(400).json(errorResponse('A post with this slug already exists.'));
+        res.status(500).json(errorResponse(error.message));
     }
 };
 
 /**
- * @desc    Delete a post.
- * Clears cache to remove the deleted post from lists.
- * @route   DELETE /api/v1/posts/:id
- * @access  Protected (Admin/Editor)
- * @returns {Object} JSON response with success message
+ * @function deletePost
+ * @description Deletes a post from the database and flushes the cache.
+ * @route DELETE /api/v1/posts/:id
+ * @param {Object} req - The Express request object.
+ * @param {Object} res - The Express response object.
+ * @returns {Promise<void>} JSON response indicating successful deletion.
  */
 export const deletePost = async (req, res) => {
     try {
-        const post = await Post.delete(req.params.id);
+        const { id } = req.params;
+        const post = await Post.findById(id); // Fetch it first so we can log the title!
 
         if (!post) {
             return res.status(404).json(errorResponse('Post not found'));
         }
 
-        // Clear cache
+        await Post.delete(id);
+
+        await ActivityLog.log({
+            user_id: req.user.user_id,
+            action: 'DELETE_POST',
+            entity_type: 'post',
+            entity_id: id,
+            description: `Deleted post: "${post.title}"`,
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent']
+        });
+
         cacheService.flush();
 
         res.json(successResponse(null, 'Post deleted successfully'));
     } catch (error) {
         res.status(500).json(errorResponse(error.message));
+    }
+};
+
+/**
+ * @function incrementPostView
+ * @description Records a new view for a post.
+ */
+export const incrementPostView = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Post.incrementViews(id);
+        res.json(successResponse(null, 'View recorded successfully'));
+    } catch (error) {
+        res.status(500).json(errorResponse('Failed to record view'));
+    }
+};
+
+/**
+ * @function likePost
+ * @description Adds a like to a post.
+ */
+export const likePost = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Post.incrementLikes(id);
+        res.json(successResponse(null, 'Post liked successfully'));
+    } catch (error) {
+        res.status(500).json(errorResponse('Failed to like post'));
     }
 };
