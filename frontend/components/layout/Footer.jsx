@@ -19,7 +19,7 @@ export default function Footer() {
                         <span className="text-xl font-bold">EduCMS</span>
                     </Link>
                     <p className="text-sm text-slate-400">
-                        Empowering institutions to publish, manage, and share high-impact educational content.
+                        Empowering developers to learn, build, and share high-impact coding resources.
                     </p>
                 </div>
 
@@ -28,9 +28,6 @@ export default function Footer() {
                     <h4 className="text-white font-semibold mb-4">Content</h4>
                     <ul className="space-y-2 text-sm">
                         <li><Link href="/blog" className="hover:text-blue-400 transition-colors">All Articles</Link></li>
-                        <li><Link href="/blog?category=announcements" className="hover:text-blue-400 transition-colors">Announcements</Link></li>
-                        <li><Link href="/blog?category=research" className="hover:text-blue-400 transition-colors">Research & Guides</Link></li>
-                        <li><Link href="/categories" className="hover:text-blue-400 transition-colors">Browse Categories</Link></li>
                     </ul>
                 </div>
 
@@ -66,7 +63,7 @@ export default function Footer() {
             {/* Copyright Bar */}
             <div className="container mx-auto px-4 mt-12 pt-8 border-t border-slate-800 text-sm text-center flex flex-col md:flex-row justify-between items-center gap-4">
                 <p>&copy; {new Date().getFullYear()} EduCMS. All rights reserved.</p>
-                <p className="text-slate-500">Built for modern educational institutions.</p>
+                <p className="text-slate-500">Built for Developers.</p>
             </div>
         </footer>
     );

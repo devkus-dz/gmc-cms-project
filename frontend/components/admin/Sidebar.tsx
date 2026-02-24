@@ -1,39 +1,77 @@
 'use client';
 
-/**
- * @file frontend/components/admin/Sidebar.tsx
- * @description Persistent left navigation for the Admin Panel.
- * Uses a clean API call to let the backend clear the HttpOnly session.
- */
-
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     BookOpen, LayoutDashboard, FileText, Image as ImageIcon,
-    Tags, FolderTree, Users, Activity, Settings, LogOut
+    Tags, FolderTree, Users, Activity, Settings, LogOut, MessageSquare, Menu, X, User as UserIcon
 } from 'lucide-react';
 import { authService } from '../../services/authService';
+import api from '../../lib/axios';
+
+// 🛡️ Define the navigation structure and role permissions
+const menuGroups = [
+    {
+        label: 'Core',
+        items: [
+            { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', roles: ['admin', 'editor', 'author'] },
+            { href: '/admin/posts', icon: FileText, label: 'Posts', roles: ['admin', 'editor', 'author'] },
+            { href: '/admin/media', icon: ImageIcon, label: 'Media Library', roles: ['admin', 'editor', 'author'] },
+            { href: '/admin/comments', icon: MessageSquare, label: 'Comments', roles: ['admin', 'editor'] },
+        ]
+    },
+    {
+        label: 'Taxonomy',
+        items: [
+            { href: '/admin/categories', icon: FolderTree, label: 'Categories', roles: ['admin', 'editor'] },
+            { href: '/admin/tags', icon: Tags, label: 'Tags', roles: ['admin', 'editor'] },
+        ]
+    },
+    {
+        label: 'System',
+        items: [
+            { href: '/admin/users', icon: Users, label: 'Users', roles: ['admin'] },
+            { href: '/admin/activity', icon: Activity, label: 'Activity Log', roles: ['admin'] },
+            { href: '/admin/profile', icon: Settings, label: 'My Profile', roles: ['admin', 'editor', 'author', 'subscriber'] },
+        ]
+    }
+];
 
 export default function Sidebar() {
     const pathname = usePathname();
+    const [isOpen, setIsOpen] = useState(false);
+    const [currentUser, setCurrentUser] = useState<any>(null);
 
-    const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const res = await api.get('/users/me');
+                setCurrentUser(res.data.data);
+            } catch (error) {
+                console.error('Failed to fetch user', error);
+            }
+        };
+        fetchUser();
+    }, []);
 
-    /**
-     * Calls the backend API to clear the HttpOnly cookie, then redirects.
-     */
+    useEffect(() => {
+        setIsOpen(false);
+    }, [pathname]);
+
+    const isActive = (path: string) => {
+        if (path === '/admin') return pathname === '/admin';
+        return pathname === path || pathname.startsWith(`${path}/`);
+    };
+
     const handleLogout = async () => {
         try {
-            // 1. Tell the backend to destroy the HttpOnly cookie
             await authService.logout();
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
-            // 2. Clear basic client storage just to reset application state
             localStorage.clear();
             sessionStorage.clear();
-
-            // 3. Force a hard reload to the login page
             window.location.href = '/auth/login';
         }
     };
@@ -44,8 +82,8 @@ export default function Sidebar() {
             <Link
                 href={href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${active
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
                     }`}
             >
                 <Icon className="h-5 w-5" />
@@ -55,38 +93,81 @@ export default function Sidebar() {
     };
 
     return (
-        <aside className="w-64 bg-slate-950 text-slate-300 shrink-0 flex-col hidden md:flex border-r border-slate-800">
-            <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900">
-                <Link href="/" className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
-                    <BookOpen className="h-6 w-6 text-blue-500" />
-                    <span className="text-xl font-bold tracking-tight">EduCMS</span>
-                </Link>
-            </div>
+        <>
+            <button
+                onClick={() => setIsOpen(true)}
+                className="md:hidden fixed top-3 left-4 z-40 p-2 bg-slate-900 text-white rounded-lg shadow-md hover:bg-slate-800 transition-colors"
+                aria-label="Open Menu"
+            >
+                <Menu className="h-6 w-6" />
+            </button>
 
-            <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
-                <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Core</p>
-                <NavItem href="/admin" icon={LayoutDashboard} label="Dashboard" />
-                <NavItem href="/admin/posts" icon={FileText} label="Posts" />
-                <NavItem href="/admin/media" icon={ImageIcon} label="Media Library" />
+            {isOpen && (
+                <div
+                    className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden"
+                    onClick={() => setIsOpen(false)}
+                />
+            )}
 
-                <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-8 mb-3">Taxonomy</p>
-                <NavItem href="/admin/categories" icon={FolderTree} label="Categories" />
-                <NavItem href="/admin/tags" icon={Tags} label="Tags" />
+            <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
 
-                <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-8 mb-3">System</p>
-                <NavItem href="/admin/users" icon={Users} label="Users" />
-                <NavItem href="/admin/activity" icon={Activity} label="Activity Log" />
-                <NavItem href="/admin/settings" icon={Settings} label="Settings" />
-            </nav>
+                <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900 shrink-0">
+                    <Link href="/" className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
+                        <BookOpen className="h-6 w-6 text-blue-500" />
+                        <span className="text-xl font-bold tracking-tight">EduCMS</span>
+                    </Link>
+                    <button onClick={() => setIsOpen(false)} className="md:hidden p-1 text-slate-400 hover:text-white rounded-lg transition-colors">
+                        <X className="h-6 w-6" />
+                    </button>
+                </div>
 
-            <div className="p-4 border-t border-slate-800 bg-slate-900">
-                <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
-                >
-                    <LogOut className="h-5 w-5" /> Logout
-                </button>
-            </div>
-        </aside>
+                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
+                    {/* 🛡️ Dynamically render groups and items based on role */}
+                    {currentUser && menuGroups.map((group, groupIndex) => {
+                        // Filter items in this group that the current user is allowed to see
+                        const allowedItems = group.items.filter(item => item.roles.includes(currentUser.role));
+
+                        // If the user isn't allowed to see ANY items in this group, don't render the group title
+                        if (allowedItems.length === 0) return null;
+
+                        return (
+                            <div key={groupIndex} className={groupIndex > 0 ? "mt-8" : ""}>
+                                <p className="px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                                    {group.label}
+                                </p>
+                                {allowedItems.map((item, itemIndex) => (
+                                    <NavItem key={itemIndex} href={item.href} icon={item.icon} label={item.label} />
+                                ))}
+                            </div>
+                        );
+                    })}
+                </nav>
+
+                <div className="p-4 border-t border-slate-800 bg-slate-900 shrink-0 flex flex-col gap-2">
+                    {currentUser && (
+                        <div className="flex items-center gap-3 px-3 py-2 mb-2 bg-slate-800/50 rounded-lg border border-slate-800">
+                            <div className="h-8 w-8 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                                {currentUser.avatar ? (
+                                    <img src={currentUser.avatar} alt="Avatar" className="h-full w-full object-cover" />
+                                ) : (
+                                    <UserIcon className="h-4 w-4 text-slate-400" />
+                                )}
+                            </div>
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-semibold text-white truncate">{currentUser.username}</p>
+                                <p className="text-xs text-slate-400 capitalize truncate">{currentUser.role}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-3 py-2 text-sm font-medium text-slate-400 hover:text-white hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
+                    >
+                        <LogOut className="h-5 w-5" /> Logout
+                    </button>
+                </div>
+            </aside>
+        </>
     );
 }

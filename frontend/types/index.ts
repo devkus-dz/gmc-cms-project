@@ -44,20 +44,46 @@ export type PostStatus = 'draft' | 'published' | 'archived';
  * Represents a Blog Post, Article, or Announcement.
  */
 export interface Post {
-    post_id: number;
+    post_id?: string;
+    id?: string; // Sometimes APIs return just 'id' depending on the backend mapping
     title: string;
     slug: string;
-    content: string; // HTML or Markdown content
+    content: string;
     excerpt?: string;
-    featured_image?: string;
-    status: PostStatus;
-    author_id: number;
-    author?: User;
-    views: number;
+    status: 'published' | 'draft' | 'archived';
+
+    // Engagement & SEO Fields
+    view_count?: number;
+    like_count?: number;
+    reading_time?: number;
+    allow_comments?: boolean;
+    meta_title?: string;
+    meta_description?: string;
+    meta_keywords?: string;
+    is_featured?: boolean;
+
+    // Media & Timestamps
+    featured_image?: string | null;
     created_at: string;
-    updated_at: string;
-    category_id?: number;
-    category?: Category;
+    updated_at?: string;
+    published_at?: string;
+
+    // Relationships
+    author_id?: string;
+    category_id?: string;
+
+    // Joined Data (When fetched via findBySlug or findAll)
+    author?: {
+        user_id?: string;
+        username: string;
+        avatar?: string;
+        bio?: string;
+    };
+    category?: {
+        category_id: string;
+        name: string;
+        slug?: string;
+    };
     tags?: Tag[];
 }
 

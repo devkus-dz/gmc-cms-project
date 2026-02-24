@@ -5,9 +5,10 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Calendar, User, Clock, BookOpen, Tag as TagIcon, Folder } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Clock, BookOpen, Tag as TagIcon, Folder, Eye } from 'lucide-react';
 import { postService } from '../../../../services/postService';
-import { Post, Tag } from '../../../../types'; // Ensure you import your types
+import { Post, Tag } from '../../../../types';
+import PostEngagement from '../../../../components/public/PostEngagement'; // 👈 Import the new component
 
 export const dynamic = 'force-dynamic';
 
@@ -64,9 +65,17 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
                             <Calendar className="h-4 w-4 text-blue-500" />
                             {new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                         </span>
+
+                        {/* 👇 Updated to use your new Database field */}
                         <span className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-blue-500" />
-                            {Math.max(1, Math.ceil((post.content?.split(' ').length || 0) / 200))} min read
+                            {post.reading_time || 1} min read
+                        </span>
+
+                        {/* 👇 Added view count display */}
+                        <span className="flex items-center gap-2">
+                            <Eye className="h-4 w-4 text-blue-500" />
+                            {post.view_count || 0} views
                         </span>
                     </div>
                 </header>
@@ -106,6 +115,12 @@ export default async function SinglePostPage({ params }: SinglePostPageProps) {
                         </div>
                     </div>
                 )}
+
+                <PostEngagement
+                    postId={post.post_id || post.id || ''}
+                    initialLikes={post.like_count || 0}
+                    allowComments={post.allow_comments ?? true}
+                />
 
             </div>
         </article>
