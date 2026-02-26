@@ -58,6 +58,16 @@ class Post {
     static async incrementViews(id) {
         await query('UPDATE posts SET view_count = view_count + 1 WHERE post_id = $1', [id]);
     }
+
+    /**
+     * @function incrementLikes
+     * @description Increments the like count for a specific post.
+     * @param {string|number} id - The ID of the post.
+     * @returns {Promise<void>}
+     */
+    static async incrementLikes(id) {
+        await query('UPDATE posts SET like_count = COALESCE(like_count, 0) + 1 WHERE post_id = $1', [id]);
+    }
 }
 
 export default Post;

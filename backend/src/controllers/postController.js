@@ -86,22 +86,27 @@ export const getPostBySlug = async (req, res) => {
  */
 export const createPost = async (req, res) => {
     try {
-        const { title } = req.body;
+        const postData = { ...req.body, author_id: req.user.user_id };
+        const newPost = await Post.create(postData);
 
-        const postData = {
-            ...req.body,
-            author_id: req.user.user_id,
-            slug: generateSlug(title)
-        };
+        // Your existing activity log
+        await ActivityLog.log({
+            user_id: req.user.user_id,
+            action: 'CREATE_POST',
+            entity_type: 'post',
+            entity_id: newPost.post_id,
+            description: `Created new post: "${newPost.title}"`,
+            ip_address: req.ip,
+            user_agent: req.headers['user-agent']
+        });
 
-        const post = await Post.create(postData);
-
-        // Clear all cache to update lists
+        // 👇 CLEAR THE CACHE HERE
         cacheService.flush();
 
-        res.status(201).json(successResponse(post, 'Post created successfully'));
+        res.status(201).json(successResponse(newPost, 'Post created successfully'));
     } catch (error) {
-        res.status(400).json(errorResponse(error.message));
+        if (error.code === '23505') return res.status(400).json(errorResponse('A post with this slug already exists.'));
+        res.status(500).json(errorResponse(error.message));
     }
 };
 
@@ -155,5 +160,35 @@ export const deletePost = async (req, res) => {
         res.json(successResponse(null, 'Post deleted successfully'));
     } catch (error) {
         res.status(500).json(errorResponse(error.message));
+    }
+
+
+};
+
+/**
+ * @function incrementPostView
+ * @description Records a new view for a post.
+ */
+export const incrementPostView = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Post.incrementViews(id);
+        res.json(successResponse(null, 'View recorded successfully'));
+    } catch (error) {
+        res.status(500).json(errorResponse('Failed to record view'));
+    }
+};
+
+/**
+ * @function likePost
+ * @description Adds a like to a post.
+ */
+export const likePost = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Post.incrementLikes(id);
+        res.json(successResponse(null, 'Post liked successfully'));
+    } catch (error) {
+        res.status(500).json(errorResponse('Failed to like post'));
     }
 };

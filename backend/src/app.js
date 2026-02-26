@@ -14,7 +14,8 @@ import tagRoutes from './routes/tags.js';
 import commentRoutes from './routes/comments.js';
 import mediaRoutes from './routes/media.js';
 import userRoutes from './routes/users.js';
-import statsRoutes from './routes/stats.js';
+import dashboardRoutes from './routes/dashboard.js';
+import activityRoutes from './routes/activity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +47,8 @@ app.use(`${apiPrefix}/tags`, tagRoutes);
 app.use(`${apiPrefix}/comments`, commentRoutes);
 app.use(`${apiPrefix}/media`, mediaRoutes);
 app.use(`${apiPrefix}/users`, userRoutes);
-app.use(`${apiPrefix}/stats`, statsRoutes);
+app.use(`${apiPrefix}/dashboard`, dashboardRoutes);
+app.use(`${apiPrefix}//activity`, activityRoutes);
 
 // Root route
 app.get('/', (req, res) => {
