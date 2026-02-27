@@ -42,7 +42,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
      * @description Retrieves the specific post data from the API using the slug.
      * @returns {Promise<void>}
      */
-    const fetchPost = async () => {
+    const fetchPost = async (): Promise<void> => {
         try {
             const response = await api.get(`/posts/${postSlug}`);
             const post = response.data.data;
@@ -62,7 +62,9 @@ export default function EditPostPage({ params }: EditPostPageProps) {
                     ? new Date(post.published_at).toISOString().slice(0, 16)
                     : new Date().toISOString().slice(0, 16),
                 tags: Array.isArray(post.tags)
-                    ? post.tags.map((t: any) => typeof t === 'string' ? t : (t.tag_id || t.id))
+                    ? post.tags
+                        .map((t: any) => String(typeof t === 'object' ? (t.tag_id || t.id) : t))
+                        .filter((t: string) => t !== 'null' && t !== 'undefined' && t !== '')
                     : [],
                 meta_title: post.meta_title || '',
                 meta_description: post.meta_description || '',

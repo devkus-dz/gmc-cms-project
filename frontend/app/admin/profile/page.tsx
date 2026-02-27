@@ -56,7 +56,7 @@ export default function ProfilePage() {
             await api.put('/users/profile', formData);
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
 
-            // Optional: Refresh the page so the sidebar avatar updates immediately
+            // Refresh the page so the sidebar avatar updates immediately
             setTimeout(() => window.location.reload(), 1500);
 
         } catch (err: any) {

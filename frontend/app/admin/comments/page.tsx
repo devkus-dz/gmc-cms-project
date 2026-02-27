@@ -1,42 +1,62 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AlertCircle } from 'lucide-react';
 import api from '../../../lib/axios';
 import CommentsTable, { CommentItem } from '../../../components/admin/comments/CommentsTable';
 import DeleteConfirmationModal from '../../../components/admin/DeleteConfirmationModal';
 
+/**
+ * @file frontend/app/(admin)/comments/page.tsx
+ * @description Admin page for moderating comments with server-side pagination.
+ */
 export default function CommentsManagementPage() {
     const [comments, setComments] = useState<CommentItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Modal State
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [commentToDelete, setCommentToDelete] = useState<CommentItem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    useEffect(() => {
-        fetchComments();
-    }, []);
-
-    const fetchComments = async () => {
+    /**
+     * @function fetchComments
+     * @description Retrieves the paginated list of comments.
+     */
+    const fetchComments = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await api.get('/comments');
-            setComments(response.data.data || []);
+            const response = await api.get(`/comments?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`);
+            setComments(response.data.data.items || []);
+            setTotalPages(response.data.data.pagination.totalPages || 1);
+            setTotalItems(response.data.data.pagination.total || 0);
         } catch (err: any) {
             setError('Could not load comments.');
         } finally {
             setIsLoading(false);
         }
+    }, [page, limit, searchQuery]);
+
+    useEffect(() => {
+        fetchComments();
+    }, [fetchComments]);
+
+    const handleSearch = (query: string) => {
+        setSearchQuery(query);
+        setPage(1);
     };
 
     const handleStatusChange = async (id: string, newStatus: string) => {
         try {
-
             await api.put(`/comments/${id}/status`, { status: newStatus });
-
             // Update UI optimistically
             setComments((prev) =>
                 prev.map(c => c.comment_id === id ? { ...c, status: newStatus as any } : c)
@@ -59,7 +79,7 @@ export default function CommentsManagementPage() {
         setIsDeleting(true);
         try {
             await api.delete(`/comments/${commentToDelete.comment_id}`);
-            setComments(comments.filter((c) => c.comment_id !== commentToDelete.comment_id));
+            await fetchComments();
             setDeleteModalOpen(false);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to delete comment.');
@@ -82,10 +102,14 @@ export default function CommentsManagementPage() {
                 </div>
             )}
 
-            {/* Full width table for comments */}
             <CommentsTable
                 data={comments}
                 isLoading={isLoading}
+                page={page}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                onPageChange={setPage}
+                onSearch={handleSearch}
                 onStatusChange={handleStatusChange}
                 onDelete={handleDeleteClick}
             />

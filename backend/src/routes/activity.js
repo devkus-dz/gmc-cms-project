@@ -1,10 +1,11 @@
 import express from 'express';
-import { getRecentActivity } from '../controllers/activityController.js';
-import { protect } from '../middleware/auth.js';
+import { getRecentActivity, getAllActivity } from '../controllers/activityController.js';
+import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// GET /api/v1/activity
-router.get('/', protect, getRecentActivity);
+// Allow admin, editor, and author to access these routes
+router.get('/', protect, authorize('admin'), getAllActivity);
+router.get('/recent', protect, authorize('admin', 'editor', 'author'), getRecentActivity);
 
 export default router;

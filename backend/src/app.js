@@ -22,15 +22,21 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+const allowedOrigins = ['http://localhost:3000'];
+
+if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false })); // Allow images to be viewed
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-    origin: 'http://localhost:3000', // Specifically allow your Next.js frontend
+    origin: allowedOrigins,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -48,7 +54,7 @@ app.use(`${apiPrefix}/comments`, commentRoutes);
 app.use(`${apiPrefix}/media`, mediaRoutes);
 app.use(`${apiPrefix}/users`, userRoutes);
 app.use(`${apiPrefix}/dashboard`, dashboardRoutes);
-app.use(`${apiPrefix}//activity`, activityRoutes);
+app.use(`${apiPrefix}/activity`, activityRoutes);
 
 // Root route
 app.get('/', (req, res) => {

@@ -1,31 +1,40 @@
 import Comment from '../models/Comment.js';
 import cacheService from '../services/cacheService.js';
-import { successResponse, errorResponse } from '../utils/helpers.js';
+import { successResponse, errorResponse, paginate } from '../utils/helpers.js';
 
 /**
- * @desc    Get all comments (System-wide).
- * Uses caching to reduce database load for admin dashboards.
+ * @desc    Get all comments (System-wide) with pagination.
  * @route   GET /api/v1/comments
  * @access  Protected (Admin/Editor)
- * @returns {Object} List of all comments
  */
 export const getAllComments = async (req, res) => {
     try {
-        const cacheKey = 'all_system_comments';
+        const { page, limit, offset } = paginate(req.query.page, req.query.limit);
+        const search = req.query.search || '';
 
-        // Check Cache
+        // Dynamic cache key
+        const cacheKey = `all_comments_${page}_${limit}_${search}`;
+
         const cachedData = cacheService.get(cacheKey);
         if (cachedData) {
             return res.json(successResponse(cachedData));
         }
 
-        // Database Query
-        const comments = await Comment.findAll();
+        const result = await Comment.findAll({ limit, offset, search });
 
-        // Save to Cache (TTL 5 minutes)
-        cacheService.set(cacheKey, comments, 300);
+        const responseData = {
+            items: result.comments,
+            pagination: {
+                total: result.total,
+                page,
+                limit,
+                totalPages: Math.ceil(result.total / limit)
+            }
+        };
 
-        res.json(successResponse(comments));
+        cacheService.set(cacheKey, responseData, 300);
+
+        res.json(successResponse(responseData));
     } catch (error) {
         res.status(500).json(errorResponse(error.message));
     }
@@ -63,7 +72,7 @@ export const getPostComments = async (req, res) => {
 
 /**
  * @desc    Create a new comment.
- * Invalidates cache for the specific post and the system-wide list.
+ * Flushes cache so it appears immediately in the admin panel and public post.
  * @route   POST /api/v1/comments
  * @access  Protected (Logged in users)
  * @returns {Object} The created comment object
@@ -83,10 +92,7 @@ export const createComment = async (req, res) => {
 
         const comment = await Comment.create(commentData);
 
-        // Invalidate cache for this post's comments
-        cacheService.del(`comments_post_${post_id}`);
-        // Invalidate admin list cache
-        cacheService.del('all_system_comments');
+        cacheService.flush();
 
         res.status(201).json(successResponse(comment, 'Comment submitted successfully'));
     } catch (error) {

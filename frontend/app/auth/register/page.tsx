@@ -2,14 +2,17 @@
 
 /**
  * @file frontend/app/(auth)/register/page.tsx
- * @description User registration page with Zod validation.
+ * @description User registration page with Zod validation and API integration.
  */
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
-import { Mail, Lock, User, UserPlus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Mail, Lock, User, UserPlus, AlertCircle } from 'lucide-react';
+import { authService } from '../../../services/authService';
 
 const registerSchema = z.object({
     username: z.string().min(3, { message: "Username must be at least 3 characters." }),
@@ -20,6 +23,9 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
+    const router = useRouter();
+    const [serverError, setServerError] = useState<string | null>(null);
+
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterFormValues>({
         resolver: zodResolver(registerSchema),
     });
@@ -29,9 +35,21 @@ export default function RegisterPage() {
      * @param {RegisterFormValues} data - The validated form data.
      */
     const onSubmit = async (data: RegisterFormValues) => {
-        // TODO: Connect this to our Axios AuthService later
-        console.log('Registration Data:', data);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        setServerError(null); // Clear previous errors
+        try {
+            // Call the backend API
+            await authService.register(data);
+
+            // Registration is successful, and the backend set the HttpOnly cookie.
+            // Send the user directly to the admin dashboard!
+            router.push('/admin');
+        } catch (error: any) {
+            console.error('Registration error:', error);
+            // Display the specific error from the backend (e.g., "Email already registered")
+            setServerError(
+                error.response?.data?.message || 'Failed to create account. Please try again.'
+            );
+        }
     };
 
     return (
@@ -40,6 +58,14 @@ export default function RegisterPage() {
                 <h1 className="text-2xl font-bold text-slate-900">Create an Account</h1>
                 <p className="text-slate-500 text-sm mt-2">Join EduCMS to start managing content.</p>
             </div>
+
+            {/* Display Server Errors */}
+            {serverError && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <p>{serverError}</p>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 {/* Username Field */}

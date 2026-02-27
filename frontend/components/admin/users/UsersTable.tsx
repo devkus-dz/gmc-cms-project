@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Edit, Trash2, Search, ArrowUpDown, ChevronLeft, ChevronRight, User as UserIcon, Shield, Edit3, PenTool, UserCheck } from 'lucide-react';
 import {
     createColumnHelper,
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
@@ -22,18 +21,40 @@ export interface UserItem {
     last_login: string | null;
 }
 
+/**
+ * @interface UsersTableProps
+ * @description Properties including server-side pagination and search hooks.
+ */
 interface UsersTableProps {
     data: UserItem[];
     isLoading: boolean;
     editingId: string | null;
+    page: number;
+    totalPages: number;
+    totalItems: number;
+    onPageChange: (page: number) => void;
+    onSearch: (query: string) => void;
     onEdit: (user: UserItem) => void;
     onDelete: (id: string) => void;
 }
 
 const columnHelper = createColumnHelper<UserItem>();
 
-export default function UsersTable({ data, isLoading, editingId, onEdit, onDelete }: UsersTableProps) {
-    const [globalFilter, setGlobalFilter] = useState('');
+/**
+ * @function UsersTable
+ * @description Data table displaying users with server-side pagination.
+ */
+export default function UsersTable({
+    data, isLoading, editingId, page, totalPages, totalItems, onPageChange, onSearch, onEdit, onDelete
+}: UsersTableProps) {
+    const [localSearch, setLocalSearch] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            onSearch(localSearch);
+        }, 300); // 300ms debounce to prevent spamming backend API
+        return () => clearTimeout(timer);
+    }, [localSearch, onSearch]);
 
     const columns = useMemo(() => [
         columnHelper.accessor('username', {
@@ -78,8 +99,7 @@ export default function UsersTable({ data, isLoading, editingId, onEdit, onDelet
         columnHelper.accessor('is_active', {
             header: 'Status',
             cell: (info) => (
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${info.getValue() ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-                    }`}>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${info.getValue() ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                     <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${info.getValue() ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                     {info.getValue() ? 'Active' : 'Locked'}
                 </span>
@@ -90,16 +110,10 @@ export default function UsersTable({ data, isLoading, editingId, onEdit, onDelet
             header: () => <div className="text-right">Actions</div>,
             cell: (info) => (
                 <div className="flex items-center justify-end gap-2">
-                    <button
-                        onClick={() => onEdit(info.row.original)}
-                        className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-                    >
+                    <button onClick={() => onEdit(info.row.original)} className="p-1.5 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
                         <Edit className="h-4 w-4" />
                     </button>
-                    <button
-                        onClick={() => onDelete(info.row.original.user_id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                    >
+                    <button onClick={() => onDelete(info.row.original.user_id)} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
                         <Trash2 className="h-4 w-4" />
                     </button>
                 </div>
@@ -110,29 +124,33 @@ export default function UsersTable({ data, isLoading, editingId, onEdit, onDelet
     const table = useReactTable({
         data,
         columns,
-        state: { globalFilter },
-        onGlobalFilterChange: setGlobalFilter,
+        state: {
+            pagination: { pageIndex: page - 1, pageSize: 10 }
+        },
+        pageCount: totalPages,
+        manualPagination: true,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        initialState: { pagination: { pageSize: 10 } },
     });
 
     return (
         <div className="space-y-4">
-            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center">
-                <div className="relative w-full">
+            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div className="relative w-full max-w-sm">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-slate-400" />
                     </div>
                     <input
                         type="text"
                         placeholder="Search users..."
-                        value={globalFilter ?? ''}
-                        onChange={(e) => setGlobalFilter(e.target.value)}
+                        value={localSearch}
+                        onChange={(e) => setLocalSearch(e.target.value)}
                         className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none text-sm"
                     />
+                </div>
+                <div className="text-sm text-slate-500 font-medium px-4">
+                    Total Users: {totalItems}
                 </div>
             </div>
 
@@ -145,10 +163,7 @@ export default function UsersTable({ data, isLoading, editingId, onEdit, onDelet
                                     {headerGroup.headers.map((header) => (
                                         <th key={header.id} className="px-6 py-4">
                                             {header.isPlaceholder ? null : (
-                                                <div
-                                                    className={`flex items-center gap-2 ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-slate-700' : ''}`}
-                                                    onClick={header.column.getToggleSortingHandler()}
-                                                >
+                                                <div className={`flex items-center gap-2 ${header.column.getCanSort() ? 'cursor-pointer select-none hover:text-slate-700' : ''}`} onClick={header.column.getToggleSortingHandler()}>
                                                     {flexRender(header.column.columnDef.header, header.getContext())}
                                                     {header.column.getCanSort() && <ArrowUpDown className="h-3 w-3 text-slate-400" />}
                                                 </div>
@@ -188,13 +203,13 @@ export default function UsersTable({ data, isLoading, editingId, onEdit, onDelet
                 </div>
                 <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
                     <div className="flex items-center gap-2 ml-auto">
-                        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors">
+                        <button onClick={() => onPageChange(page - 1)} disabled={page <= 1} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors">
                             <ChevronLeft className="h-4 w-4" />
                         </button>
                         <span className="text-sm text-slate-600 font-medium px-2">
-                            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
+                            Page {page} of {totalPages}
                         </span>
-                        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors">
+                        <button onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors">
                             <ChevronRight className="h-4 w-4" />
                         </button>
                     </div>

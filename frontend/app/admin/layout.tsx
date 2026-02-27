@@ -7,7 +7,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Sidebar />
 
             {/* Main Content Area */}
-            <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative">
+            <main className="flex-1 overflow-y-auto pt-20 md:pt-8 px-4 md:px-8 pb-8">
                 {children}
             </main>
         </div>

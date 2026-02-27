@@ -35,7 +35,7 @@ Built with **Node.js**, **Express**, and **PostgreSQL (via Supabase)**.
 * **Auth:** JSON Web Tokens (JWT) + Cookie Parser
 * **Logging:** Morgan
 * **Emails:** Nodemailer
-* **Security:** Helmet, CORS, Bcrypt
+* **Security:** Helmet, CORS, Bcryptjs
 
 ---
 

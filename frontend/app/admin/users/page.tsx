@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, AlertCircle, Save, X } from 'lucide-react';
 import api from '../../../lib/axios';
 import UsersTable, { UserItem } from '../../../components/admin/users/UsersTable';
 import DeleteConfirmationModal from '../../../components/admin/DeleteConfirmationModal';
 import { useRoleGuard } from '../../../hooks/useRoleGuard';
 
+/**
+ * @file frontend/app/(admin)/users/page.tsx
+ * @description User management dashboard with server-side pagination.
+ */
 export default function UsersManagementPage() {
-
     const { isAuthorized, isLoading: roleLoading } = useRoleGuard(['admin']);
 
     const [users, setUsers] = useState<UserItem[]>([]);
@@ -16,37 +19,52 @@ export default function UsersManagementPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [editingId, setEditingId] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Added firstName and lastName to match your backend creation logic
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        firstName: '',
-        lastName: '',
-        password: '',
-        role: 'subscriber',
-        is_active: true,
+        username: '', email: '', firstName: '', lastName: '', password: '', role: 'subscriber', is_active: true,
     });
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
-    const fetchUsers = async () => {
+    /**
+     * @function fetchUsers
+     * @description Fetches the paginated list of users from the API.
+     */
+    const fetchUsers = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await api.get('/users');
-            setUsers(response.data.data || []);
+            const response = await api.get(`/users?page=${page}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`);
+            setUsers(response.data.data.items || []);
+            setTotalPages(response.data.data.pagination.totalPages || 1);
+            setTotalItems(response.data.data.pagination.total || 0);
         } catch (err: any) {
             setError(err.response?.data?.message || 'Could not load users.');
         } finally {
             setIsLoading(false);
         }
+    }, [page, limit, searchQuery]);
+
+    useEffect(() => {
+        if (isAuthorized) {
+            fetchUsers();
+        }
+    }, [fetchUsers, isAuthorized]);
+
+    /**
+     * @function handleSearch
+     * @description Resets pagination to page 1 when a new search is performed.
+     */
+    const handleSearch = (query: string) => {
+        setSearchQuery(query);
+        setPage(1);
     };
 
     const handleEditClick = (user: any) => {
@@ -83,9 +101,6 @@ export default function UsersManagementPage() {
         }
 
         setIsSubmitting(true);
-
-        // Build the payload cleanly without using the 'delete' keyword
-        // Also mapping camelCase to snake_case for the backend
         const payload: Record<string, any> = {
             username: formData.username,
             email: formData.email,
@@ -95,7 +110,6 @@ export default function UsersManagementPage() {
             is_active: formData.is_active,
         };
 
-        // Only attach the password if the user actually typed one
         if (formData.password) {
             payload.password = formData.password;
         }
@@ -128,7 +142,7 @@ export default function UsersManagementPage() {
         setIsDeleting(true);
         try {
             await api.delete(`/users/${userToDelete.user_id}`);
-            setUsers(users.filter((u) => u.user_id !== userToDelete.user_id));
+            await fetchUsers();
             if (editingId === userToDelete.user_id) handleCancelEdit();
             setDeleteModalOpen(false);
         } catch (err: any) {
@@ -146,7 +160,7 @@ export default function UsersManagementPage() {
             </div>
         );
     }
-    if (!isAuthorized) return null; // Prevents UI flicker while redirecting
+    if (!isAuthorized) return null;
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
@@ -232,7 +246,18 @@ export default function UsersManagementPage() {
                 </div>
 
                 <div className="lg:col-span-2">
-                    <UsersTable data={users} isLoading={isLoading} editingId={editingId} onEdit={handleEditClick} onDelete={handleDeleteClick} />
+                    <UsersTable
+                        data={users}
+                        isLoading={isLoading}
+                        editingId={editingId}
+                        page={page}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        onPageChange={setPage}
+                        onSearch={handleSearch}
+                        onEdit={handleEditClick}
+                        onDelete={handleDeleteClick}
+                    />
                 </div>
             </div>
 

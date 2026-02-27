@@ -40,14 +40,27 @@ export default function AdminDashboardPage() {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                // Fetch both dashboard stats and activity logs in parallel for speed
-                const [dashboardRes, activityRes] = await Promise.all([
-                    api.get('/dashboard'),
-                    api.get('/activity')
-                ]);
+                // Fetch Dashboard Stats first (This will succeed for Subscribers now)
+                const dashboardRes = await api.get('/dashboard');
+                const data = dashboardRes.data.data;
+                setDashboardData(data);
 
-                setDashboardData(dashboardRes.data.data);
-                setRecentActivity(activityRes.data.data.slice(0, 5)); // Grab only the 5 most recent logs
+
+                try {
+                    // Only bother fetching if they aren't a subscriber to save network requests
+                    if (!data.isSubscriber) {
+                        const activityRes = await api.get('/activity/recent');
+                        setRecentActivity(activityRes.data.data.slice(0, 5));
+                    }
+                } catch (activityErr: any) {
+                    if (activityErr.response?.status === 403) {
+                        // User doesn't have permission to see logs
+                        setRecentActivity([]);
+                    } else {
+                        console.error('Failed to load activity logs:', activityErr);
+                    }
+                }
+
             } catch (err: any) {
                 console.error('Failed to load dashboard:', err);
                 setError('Failed to load dashboard statistics.');
@@ -77,7 +90,28 @@ export default function AdminDashboardPage() {
         );
     }
 
-    // Map the real data to your stats array format
+    if (dashboardData.isSubscriber) {
+        return (
+            <div className="max-w-4xl mx-auto mt-12 text-center bg-white p-12 rounded-3xl shadow-sm border border-slate-200">
+                <div className="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <MessageSquare className="h-10 w-10 text-blue-600" />
+                </div>
+                <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                    Welcome to EduCMS!
+                </h1>
+                <p className="text-lg text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+                    We are thrilled to have you here. As a subscriber, you can explore our expertly crafted articles, participate in discussions by leaving comments, and save your favorite reads by liking them.
+                </p>
+                <Link
+                    href="/blog"
+                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3.5 rounded-xl font-semibold transition-all shadow-sm hover:shadow-md"
+                >
+                    Start Reading Articles <ArrowRight className="h-5 w-5" />
+                </Link>
+            </div>
+        );
+    }
+
     const stats = [
         { label: 'Total Posts', value: formatNumber(dashboardData.overview.posts.total), icon: FileText, color: 'text-blue-600', bg: 'bg-blue-100' },
         { label: 'Comments', value: formatNumber(dashboardData.overview.comments.total), icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-100' },

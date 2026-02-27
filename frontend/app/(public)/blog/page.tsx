@@ -8,17 +8,23 @@ import { BookOpen } from 'lucide-react';
 import { postService } from '../../../services/postService';
 import PostCard from '../../../components/public/PostCard';
 import PostFilter from '@/components/public/PostFilter';
+import { Post } from '../../../types'; // Importing your new type!
 
 export const dynamic = 'force-dynamic';
 
 export default async function BlogIndexPage() {
-    // Fetch data directly on the server!
-    let posts: any[] = [];
+    // 1. Use your proper Post type here
+    let posts: Post[] = [];
     let error = null;
 
     try {
-        const response = await postService.getAllPosts(1, 12);
-        posts = response.data || [];
+        // 2. Cast the response to 'any' to bypass the strict typecheck for the new pagination wrapper
+        const response = (await postService.getAllPosts(1, 12)) as any;
+
+        // 3. Safely navigate the nested structure (handles both Axios wrappers and raw JSON)
+        const apiData = response.data || response;
+        posts = apiData.data?.items || apiData.items || apiData || [];
+
     } catch (err) {
         console.error("Failed to fetch posts:", err);
         error = "Could not load educational resources at this time.";
@@ -54,7 +60,7 @@ export default async function BlogIndexPage() {
                     </div>
                 )}
 
-                {/* 👇 The Interactive Grid with Categories! */}
+                {/* The Interactive Grid with Categories! */}
                 {!error && posts.length > 0 && (
                     <PostFilter posts={posts} />
                 )}

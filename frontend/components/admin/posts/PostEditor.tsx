@@ -151,14 +151,15 @@ export default function PostEditor({ initialData, postId, isEdit = false }: Post
      * @param {string} tagId - The ID of the tag to toggle.
      * @returns {void}
      */
-    const handleTagToggle = (tagId: string) => {
+    const handleTagToggle = (tagId: string | number): void => {
+        const idStr = String(tagId); // Force to string
         setFormData((prev) => {
-            const isSelected = prev.tags.includes(tagId);
+            const isSelected = prev.tags.includes(idStr);
             return {
                 ...prev,
                 tags: isSelected
-                    ? prev.tags.filter(id => id !== tagId)
-                    : [...prev.tags, tagId]
+                    ? prev.tags.filter(id => id !== idStr)
+                    : [...prev.tags, idStr]
             };
         });
     };
@@ -390,15 +391,18 @@ export default function PostEditor({ initialData, postId, isEdit = false }: Post
                                     <p className="text-sm text-slate-500 italic">No tags available.</p>
                                 ) : (
                                     availableTags.map((tag) => {
-                                        const isSelected = formData.tags.includes(tag.tag_id);
+                                        // Force the tag_id to a string for a perfect match!
+                                        const tagIdStr = String(tag.tag_id);
+                                        const isSelected = formData.tags.includes(tagIdStr);
+
                                         return (
                                             <button
                                                 key={tag.tag_id}
                                                 type="button"
                                                 onClick={() => handleTagToggle(tag.tag_id)}
                                                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isSelected
-                                                    ? 'bg-blue-100 border-blue-200 text-blue-700'
-                                                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                                                        ? 'bg-blue-100 border-blue-200 text-blue-700'
+                                                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                                                     }`}
                                             >
                                                 {tag.name}

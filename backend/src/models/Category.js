@@ -27,6 +27,12 @@ class Category {
         const { rows } = await query(sql, [name, slug, description, parent_id, is_active, id]);
         return rows[0];
     }
+
+    static async delete(id) {
+        const sql = 'DELETE FROM categories WHERE category_id = $1 RETURNING *';
+        const { rows } = await query(sql, [id]);
+        return rows[0];
+    }
 }
 
 export default Category;

@@ -10,7 +10,6 @@ import {
 import { authService } from '../../services/authService';
 import api from '../../lib/axios';
 
-// 🛡️ Define the navigation structure and role permissions
 const menuGroups = [
     {
         label: 'Core',
@@ -94,14 +93,22 @@ export default function Sidebar() {
 
     return (
         <>
-            <button
-                onClick={() => setIsOpen(true)}
-                className="md:hidden fixed top-3 left-4 z-40 p-2 bg-slate-900 text-white rounded-lg shadow-md hover:bg-slate-800 transition-colors"
-                aria-label="Open Menu"
-            >
-                <Menu className="h-6 w-6" />
-            </button>
+            {/* 👇 NEW: Full Width Mobile Header instead of a floating button */}
+            <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-slate-950 text-white z-40 flex items-center justify-between px-4 border-b border-slate-800 shadow-md">
+                <Link href="/" className="flex items-center gap-2 text-white hover:opacity-80 transition-opacity">
+                    <BookOpen className="h-6 w-6 text-blue-500" />
+                    <span className="text-xl font-bold tracking-tight">EduCMS</span>
+                </Link>
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className="p-2 bg-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-700 transition-colors"
+                    aria-label="Open Menu"
+                >
+                    <Menu className="h-6 w-6" />
+                </button>
+            </div>
 
+            {/* Mobile Overlay */}
             {isOpen && (
                 <div
                     className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden"
@@ -109,6 +116,7 @@ export default function Sidebar() {
                 />
             )}
 
+            {/* Main Sidebar */}
             <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
 
                 <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-900 shrink-0">
@@ -122,12 +130,8 @@ export default function Sidebar() {
                 </div>
 
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 custom-scrollbar">
-                    {/* 🛡️ Dynamically render groups and items based on role */}
                     {currentUser && menuGroups.map((group, groupIndex) => {
-                        // Filter items in this group that the current user is allowed to see
                         const allowedItems = group.items.filter(item => item.roles.includes(currentUser.role));
-
-                        // If the user isn't allowed to see ANY items in this group, don't render the group title
                         if (allowedItems.length === 0) return null;
 
                         return (

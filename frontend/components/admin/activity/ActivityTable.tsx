@@ -7,7 +7,6 @@ import {
     flexRender,
     getCoreRowModel,
     getFilteredRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
     useReactTable,
 } from '@tanstack/react-table';
@@ -25,14 +24,36 @@ export interface ActivityItem {
     created_at: string;
 }
 
+/**
+ * @interface ActivityTableProps
+ * @description Properties for the ActivityTable component including server-side pagination state.
+ */
 interface ActivityTableProps {
     data: ActivityItem[];
     isLoading: boolean;
+    page: number;
+    totalPages: number;
+    totalItems: number;
+    onPageChange: (page: number) => void;
+    onLimitChange: (limit: number) => void;
 }
 
 const columnHelper = createColumnHelper<ActivityItem>();
 
-export default function ActivityTable({ data, isLoading }: ActivityTableProps) {
+/**
+ * @function ActivityTable
+ * @description A data table component for displaying system activity logs with server-side pagination.
+ * @param {ActivityTableProps} props - The component props.
+ */
+export default function ActivityTable({
+    data,
+    isLoading,
+    page,
+    totalPages,
+    totalItems,
+    onPageChange,
+    onLimitChange
+}: ActivityTableProps) {
     const [globalFilter, setGlobalFilter] = useState('');
 
     const columns = useMemo(() => [
@@ -70,7 +91,7 @@ export default function ActivityTable({ data, isLoading }: ActivityTableProps) {
             header: 'Action',
             cell: (info) => {
                 const action = info.getValue().toUpperCase();
-                let bg = 'bg-slate-100 text-slate-700'; // Default
+                let bg = 'bg-slate-100 text-slate-700';
 
                 if (action.includes('CREATE') || action.includes('ADD') || action.includes('LOGIN')) bg = 'bg-emerald-100 text-emerald-700';
                 if (action.includes('UPDATE') || action.includes('EDIT')) bg = 'bg-blue-100 text-blue-700';
@@ -110,29 +131,38 @@ export default function ActivityTable({ data, isLoading }: ActivityTableProps) {
     const table = useReactTable({
         data,
         columns,
-        state: { globalFilter },
+        state: {
+            globalFilter,
+            pagination: {
+                pageIndex: page - 1,
+                pageSize: 10
+            }
+        },
+        pageCount: totalPages,
+        manualPagination: true,
         onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
         getSortedRowModel: getSortedRowModel(),
-        getPaginationRowModel: getPaginationRowModel(),
-        initialState: { pagination: { pageSize: 15 } },
     });
 
     return (
         <div className="space-y-4">
-            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center">
+            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
                 <div className="relative w-full max-w-md">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <Search className="h-4 w-4 text-slate-400" />
                     </div>
                     <input
                         type="text"
-                        placeholder="Search logs by action, user, or IP..."
+                        placeholder="Search current page..."
                         value={globalFilter ?? ''}
                         onChange={(e) => setGlobalFilter(e.target.value)}
                         className="pl-10 w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-600 outline-none text-sm"
                     />
+                </div>
+                <div className="text-sm text-slate-500 font-medium px-4">
+                    Total Records: {totalItems}
                 </div>
             </div>
 
@@ -188,13 +218,21 @@ export default function ActivityTable({ data, isLoading }: ActivityTableProps) {
                 </div>
                 <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
                     <div className="flex items-center gap-2 ml-auto">
-                        <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors">
+                        <button
+                            onClick={() => onPageChange(page - 1)}
+                            disabled={page <= 1}
+                            className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                        >
                             <ChevronLeft className="h-4 w-4" />
                         </button>
                         <span className="text-sm text-slate-600 font-medium px-2">
-                            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
+                            Page {page} of {totalPages}
                         </span>
-                        <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors">
+                        <button
+                            onClick={() => onPageChange(page + 1)}
+                            disabled={page >= totalPages}
+                            className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                        >
                             <ChevronRight className="h-4 w-4" />
                         </button>
                     </div>
