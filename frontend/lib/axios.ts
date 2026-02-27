@@ -7,9 +7,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-    // Point this to your Express backend base URL
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1',
 
+    baseURL: '/api/v1',
     withCredentials: true,
 
     headers: {

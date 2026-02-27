@@ -29,7 +29,7 @@ export default function HeroSection(): JSX.Element {
                 {/* Dashboard Mockup Placeholder */}
                 <div className="mx-auto w-full max-w-5xl bg-white rounded-xl shadow-2xl shadow-blue-900/10 border border-slate-200 overflow-hidden flex items-center justify-center">
                     <Image
-                        src="/images/educms.jpg"
+                        src="/images/educms.JPG"
                         alt="EduCMS Dashboard Preview"
                         width={1200}
                         height={800}
