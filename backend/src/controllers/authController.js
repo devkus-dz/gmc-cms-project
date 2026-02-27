@@ -21,7 +21,7 @@ const sendTokenResponse = (user, statusCode, res) => {
         ),
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     };
 
     user.password_hash = undefined;
@@ -101,7 +101,7 @@ export const logout = (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     });
 
     res.status(200).json({ success: true, message: 'Logged out successfully' });
